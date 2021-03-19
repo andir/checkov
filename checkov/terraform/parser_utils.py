@@ -4,6 +4,8 @@ from dataclasses import dataclass
 from enum import Enum, IntEnum
 from typing import Any, Dict, List, Optional
 
+from functools import lru_cache
+
 import hcl2
 
 
@@ -48,6 +50,7 @@ class ParserMode(Enum):
         return str(self.value)
 
 
+@lru_cache(maxsize=1024)
 def find_var_blocks(value: str) -> List[VarBlockMatch]:
     """
     Find and return all the var blocks within a given string. Order is important and may contain portions of
