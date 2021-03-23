@@ -8,7 +8,6 @@ from typing import Any, Callable, Dict, List, Mapping, Optional, Set, Tuple
 
 import deep_merge
 import hcl2
-import jmespath
 
 from checkov.common.runners.base_runner import filter_ignored_directories
 from checkov.common.util.consts import DEFAULT_EXTERNAL_MODULES_DIR, RESOLVED_MODULE_ENTRY_NAME
@@ -588,20 +587,31 @@ def _handle_single_var_pattern(orig_variable: str, var_value_and_file_map: Dict[
             return orig_variable  # fail safe, can the length ever be something other than 3?
 
         try:
-            ref_list = jmespath.search(f"[].{ref_tokens[1]}.{RESOLVED_MODULE_ENTRY_NAME}[]", module_list)
-            #                                ^^^^^^^^^^^^^ module name
+            module_name = ref_tokens[1]
+            ref_list = []
+            mods = (m[module_name] for m in module_list if module_name in m)
+            for mod in mods:
+                if RESOLVED_MODULE_ENTRY_NAME in mod.keys():
+                    ref_list += mod[RESOLVED_MODULE_ENTRY_NAME]
 
-            if not ref_list or not isinstance(ref_list, list):
+            if not ref_list:
                 return orig_variable
 
+            def extract_module_data(module_data: Dict[str, Any], key: str) -> Optional[str]:
+                   if 'output' not in module_data.keys():
+                       return None
+ 
+                   for entry in module_data['output']:
+                       v = entry.get(key, {}).get('value')
+                       if v:
+                           return v[0]
+ 
             for ref in ref_list:
                 module_data = module_data_retrieval(ref)
                 if not module_data:
                     continue
 
-                result = _handle_indexing(ref_tokens[2],
-                                          lambda r: jmespath.search(f"output[].{ref_tokens[2]}.value[] | [0]",
-                                                                    module_data))
+                result = _handle_indexing(ref_tokens[2], lambda _: extract_module_data(module_data, ref_tokens[2]))
                 if result:
                     logging.debug("Resolved module ref:  %s --> %s", orig_variable, result)
                     return result
@@ -660,13 +670,15 @@ def _handle_single_var_pattern(orig_variable: str, var_value_and_file_map: Dict[
     elif _RESOURCE_REF_PATTERN.match(orig_variable):
         # Reference to resources, example: 'aws_s3_bucket.example.bucket'
         # TODO: handle index into map/list
-        try:
-            result = jmespath.search(f"[].{orig_variable}[] | [0]", resource_list)
-        except ValueError:
-            pass
-        else:
-            if result is not None:
-                return result
+        if resource_list:
+            try:
+                resources = [ r[orig_variable][0] for r in resource_list if  orig_variable in r ]
+                result = resources[0]
+            except IndexError:
+                pass
+            else:
+                if result is not None:
+                    return result
 
     return orig_variable  # fall back to no change
 
