@@ -17,7 +17,7 @@ from checkov.terraform import parser_functions
 from checkov.terraform.module_loading.registry import module_loader_registry as default_ml_registry, \
     ModuleLoaderRegistry
 from checkov.terraform.parser_functions import FUNCTION_FAILED
-from checkov.terraform.parser_utils import eval_string, find_var_blocks, to_string
+from checkov.terraform.parser_utils import eval_string, find_var_blocks
 
 LOGGER = logging.getLogger(__name__)
 
