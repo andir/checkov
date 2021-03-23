@@ -122,6 +122,13 @@ class Runner(BaseRunner):
         if not registry:
             return
 
+        referrer_id = None
+        if module_referrer is not None:
+            referrer_id = self._find_id_for_referrer(full_file_path,
+                                                     self.tf_definitions)
+            if not referrer_id:
+                logging.debug(f"Unable to find referrer ID for full path: %s", full_file_path)
+
         for entity in entities:
             entity_evaluations = None
             context_parser = parser_registry.context_parsers[block_type]
@@ -131,29 +138,24 @@ class Runner(BaseRunner):
             caller_file_path = None
             caller_file_line_range = None
 
-            if module_referrer is not None:
-                referrer_id = self._find_id_for_referrer(full_file_path,
-                                                         self.tf_definitions)
-                if referrer_id:
-                    entity_id = f"{referrer_id}.{entity_id}"        # ex: module.my_module.aws_s3_bucket.my_bucket
-                    abs_caller_file = module_referrer[:module_referrer.rindex("#")]
-                    caller_file_path = f"/{os.path.relpath(abs_caller_file, root_folder)}"
+            if referrer_id:
+                entity_id = f"{referrer_id}.{entity_id}"        # ex: module.my_module.aws_s3_bucket.my_bucket
+                abs_caller_file = module_referrer[:module_referrer.rindex("#")]
+                caller_file_path = f"/{os.path.relpath(abs_caller_file, root_folder)}"
 
-                    try:
-                        caller_context = dpath.get(definition_context[abs_caller_file],
-                                                   # HACK ALERT: module data is currently double-nested in
-                                                   #             definition context. If fixed, remove the
-                                                   #             addition of "module." at the beginning.
-                                                   "module." + referrer_id,
-                                                   separator=".")
-                    except KeyError:
-                        logging.debug("Unable to find caller context for: %s", abs_caller_file)
-                        caller_context = None
+                try:
+                    caller_context = dpath.get(definition_context[abs_caller_file],
+                                               # HACK ALERT: module data is currently double-nested in
+                                               #             definition context. If fixed, remove the
+                                               #             addition of "module." at the beginning.
+                                               "module." + referrer_id,
+                                               separator=".")
+                except KeyError:
+                    logging.debug("Unable to find caller context for: %s", abs_caller_file)
+                    caller_context = None
 
-                    if caller_context:
-                        caller_file_line_range = [caller_context.get('start_line'), caller_context.get('end_line')]
-                else:
-                    logging.debug(f"Unable to find referrer ID for full path: %s", full_file_path)
+                if caller_context:
+                    caller_file_line_range = [caller_context.get('start_line'), caller_context.get('end_line')]
 
             if entity_context_path_header is None:
                 entity_context_path = [block_type] + definition_path
