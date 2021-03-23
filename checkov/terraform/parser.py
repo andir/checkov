@@ -349,7 +349,8 @@ class Parser:
             for key, value in list(key_value_iterator()):       # Copy to list to allow deletion
                 new_context = f"{context}/{key}" if len(context) != 0 else key
 
-                if isinstance(value, str):
+                value_type = type(value)
+                if value_type is str:
                     altered_value = value
 
                     had_var_block_match = False
@@ -411,7 +412,7 @@ class Parser:
                         LOGGER.debug(f"Resolve: %s --> %s", value, altered_value)
                         data_map[key] = altered_value
                         made_change = True
-                elif isinstance(value, dict):
+                elif value_type is dict:
                     if self._process_vars_and_locals_loop(value, eval_map_by_var_name, relative_file_path,
                                                           var_value_and_file_map,
                                                           locals_values, resource_list,
@@ -419,7 +420,7 @@ class Parser:
                                                           new_context):
                         made_change = True
 
-                elif isinstance(value, list):
+                elif value_type is list:
                     if len(value) > 0 and value[0] != value:
                         if process_items_helper(lambda: enumerate(value), value, new_context, True):
                             made_change = True
