@@ -17,8 +17,11 @@ class BaseResourceNegativeValueCheck(BaseResourceCheck):
 
         excluded_key = self.get_excluded_key()
         if excluded_key is not None:
-            if dpath.search(conf, excluded_key) != {}:
+            try:
                 value = dpath.get(conf, excluded_key)
+            except KeyError:
+                value = None
+            if value:
                 if isinstance(value, list) and len(value) == 1:
                     value = value[0]
                 if self.check_excluded_condition(value):
@@ -26,8 +29,13 @@ class BaseResourceNegativeValueCheck(BaseResourceCheck):
 
         inspected_key = self.get_inspected_key()
         bad_values = self.get_forbidden_values()
-        if dpath.search(conf, inspected_key) != {}:
+
+        try:
             value = dpath.get(conf, inspected_key)
+        except KeyError:
+            value = None
+
+        if value:
             if isinstance(value, list) and len(value) == 1:
                 value = value[0]
             if value in bad_values or ANY_VALUE in bad_values:

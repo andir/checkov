@@ -47,7 +47,13 @@ class BaseResourceValueCheck(BaseResourceCheck):
         self.handle_dynamic_values(conf)
         inspected_key = self.get_inspected_key()
         expected_values = self.get_expected_values()
-        if dpath.search(conf, inspected_key) != {}:
+
+        try:
+            value = dpath.get(conf, inspected_key)
+        except KeyError:
+            value = None
+
+        if value:
             # Inspected key exists
             if ANY_VALUE in expected_values:
                 # Key is found on the configuration - if it accepts any value, the check is PASSED

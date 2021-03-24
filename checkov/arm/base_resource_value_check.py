@@ -41,11 +41,18 @@ class BaseResourceValueCheck(BaseResourceCheck):
     def scan_resource_conf(self, conf):
         inspected_key = self.get_inspected_key()
         expected_values = self.get_expected_values()
-        if dpath.search(conf, inspected_key) != {}:
+
+        # Do the expensive lookup once (instead of using search and then get)
+        # If the get fails (no entry) an KeyError will be thrown
+        try:
+            value = dpath.get(conf, inspected_key)
+        except KeyError:
+            value = None
+
+        if value:
             if ANY_VALUE in expected_values:
                 # Key is found on the configuration - if it accepts any value, the check is PASSED
                 return CheckResult.PASSED
-            value = dpath.get(conf, inspected_key)
             if isinstance(value, list) and len(value) == 1:
                 value = value[0]
             if self._is_variable_dependant(value):
